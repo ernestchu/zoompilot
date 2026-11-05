@@ -25,6 +25,9 @@ blacklist = [
   # jetlink: the comma imports the package and runs scripts/comma/ (jetlink.comma.root);
   # the rest of the submodule is the Jetson's, the Mac's and the iPhone's
   "^jetlink_repo/(?!jetlink/|scripts/comma/|LICENSE$)",
+
+  # diorama: the comma runs the package (dioramad); the rest is the iPhone app's and the Mac's
+  "^diorama_repo/(?!diorama/|LICENSE$)",
 ]
 
 # gets you through the blacklist

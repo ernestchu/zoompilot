@@ -334,6 +334,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     // an iPhone on a direct cable charges from the comma; off by default, some
     // lose the link once the comma powers them
     {"JetlinkChargePhone", {PERSISTENT, BOOL, "0"}},
+    // dioramad (the diorama_repo submodule) streams the drive to an iPhone on jetlink's iOS cable
+    {"Diorama", {PERSISTENT | BACKUP, BOOL, "0"}},
 
     // one-time markers
     {"ExperimentalAssistsDefaultOn", {PERSISTENT | BACKUP, BOOL}},  // Speed/Lead Follow Assist turned on once when they became default (params_migration_zp.py)

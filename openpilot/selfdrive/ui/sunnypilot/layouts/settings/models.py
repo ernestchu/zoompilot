@@ -13,8 +13,8 @@ from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.sunnypilot.ui_state_zp import lane_center_mode, set_lane_center_mode
-from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODE_TITLES, big_model_note, link_mode, link_status, \
-  link_toggle_meaningful, standin_model
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, LINK_MODE_TITLES, big_model_note, \
+  diorama_toggle_meaningful, link_mode, link_status, link_toggle_meaningful, standin_model
 from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
                                                            model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
 from openpilot.sunnypilot.jetlink_adapter import KEYS, MODES
@@ -28,7 +28,7 @@ from openpilot.system.ui.widgets.toggle import ON_COLOR
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.switch import Switch
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction, ScrollingButtonAction
-from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, option_item_sp, multiple_button_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, option_item_sp, multiple_button_item_sp, toggle_item_sp
 from openpilot.system.ui.sunnypilot.widgets.download_status import download_status_item
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
 
@@ -78,6 +78,12 @@ class ModelsLayout(Widget):
       self._link_description(""),
       buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in MODES],
       param=KEYS.link, button_width=300, inline=False)
+
+    # takes effect onroad too: manager starts and stops dioramad as the param changes
+    self.diorama_item = toggle_item_sp(
+      tr("Diorama"),
+      tr("Shows the drive as a live 3-D miniature on the iPhone plugged in over Jetlink's iOS link, in the Diorama app."),
+      initial_state=ui_state.params.get_bool(DIORAMA_KEY), param=DIORAMA_KEY)
 
     self.download_item = download_status_item(lambda: tr("Download") if self._downloading else tr("Model Status"))
 
@@ -134,7 +140,7 @@ class ModelsLayout(Widget):
     # as the comma 4 panel: jetlink and small model steering just before refresh
     self.items = [self.small_model_item, self.big_model_item, self.cancel_download_item, self.download_item,
                   self.blendful_toggle, self.lane_turn_value_control, self.delay_control, self.camera_offset,
-                  self.accelerator_link_item, self.small_steering_control, self.refresh_item, self.clear_cache_item]
+                  self.accelerator_link_item, self.diorama_item, self.small_steering_control, self.refresh_item, self.clear_cache_item]
     self._refresh_accelerator_items()
 
   @staticmethod
@@ -147,6 +153,7 @@ class ModelsLayout(Widget):
     self.accelerator_link_item.set_visible(link_toggle_meaningful())
     self.accelerator_link_item.action_item.set_selected_button(MODES.index(link_mode()))
     self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad())
+    self.diorama_item.set_visible(diorama_toggle_meaningful())
     status = link_status()
     if status != self._link_status:
       self._link_status = status

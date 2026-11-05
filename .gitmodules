@@ -9,6 +9,9 @@
 [submodule "jetlink"]
   path = jetlink_repo
   url = https://github.com/zoompilot/jetlink.git
+[submodule "diorama"]
+  path = diorama_repo
+  url = https://github.com/ernestchu/diorama.git
 [submodule "msgq"]
   path = msgq_repo
   url = https://github.com/sunnypilot/msgq.git

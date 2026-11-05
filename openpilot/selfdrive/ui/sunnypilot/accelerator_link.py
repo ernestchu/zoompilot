@@ -27,6 +27,16 @@ def link_mode() -> str:
   return MODES[index] if isinstance(index, int) and 0 <= index < len(MODES) else "off"
 
 
+# dioramad's setting (the diorama_repo submodule): it streams to an iPhone on jetlink's iOS cable
+DIORAMA_KEY = "Diorama"
+
+
+def diorama_toggle_meaningful() -> bool:
+  """Offered while the link is on iOS: the iPhone reaches dioramad over that cable's network,
+  and manager runs it only then."""
+  return link_mode() == "ios"
+
+
 def link_toggle_meaningful() -> bool:
   """Offered wherever jetlink is checked out, as the chestnut slot is offered
   whether or not a board is fitted, except beside a chestnut, which runs the
