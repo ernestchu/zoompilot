@@ -34,6 +34,7 @@ class UIStateZP:
     # jetlink's snapshot (jetlink.openpilot.Status) from the params pass; None
     # with a chestnut fitted or no jetlink on this device
     self.jetlink = None
+    self.diorama = False
     # Jetlink holds the USB port, so ADB is off and its toggle greyed out
     self.adb_blocked: bool = False
     self._accelerator_state_name: str = 'none'
@@ -67,6 +68,8 @@ class UIStateZP:
     self._steer_rail_schedule = get_steer_rail_schedule(self.CP) if self.CP is not None else None
     # on the 5 Hz params pass, not per frame in a layout; a fitted chestnut owns chestnut_state
     self.jetlink = None if self.sm['deviceState'].chestnutPresent else jetlink_adapter.status()
+    # with Diorama on, the iPhone on jetlink's iOS link watches the drive (dioramad) and runs no big model
+    self.diorama = self.params.get_bool("Diorama")
     self._enforce_usb_port()
     # the Jetson configures the gadget ~25 s after a cold boot, after the one-shot
     # usb_unknown decision; recognising it late still clears "unknown"
@@ -129,8 +132,11 @@ class UIStateZP:
     return self.jetlink if self.jetlink is not None and self.jetlink.shown else None
 
   def _jetlink_state(self, view):
-    """ChestnutState for the link: progress and the records offroad, modelV2 and acceleratorState onroad"""
+    """ChestnutState for the link: progress and the records offroad, modelV2 and acceleratorState onroad. No
+    badge (DISCONNECTED) with Diorama on: the iPhone never serves the big model then, so the badge would blink for good, waiting for it."""
     from openpilot.selfdrive.ui.ui_state import ChestnutState  # defined by the class that mixes this in
+    if self.diorama:
+      return ChestnutState.DISCONNECTED
     model_seen = self.sm.recv_frame["modelV2"] > self.started_frame
     running_big = self.sm.alive["modelV2"] and self.sm["modelV2"].big
     return ChestnutState(view.icon(self.started, model_seen, running_big, self._accelerator_state_name))

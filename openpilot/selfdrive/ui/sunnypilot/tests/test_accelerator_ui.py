@@ -190,6 +190,17 @@ class TestUIStateJetlinkView(UITest):
     """The link on."""
     return jetlink_status(enabled=True, present=present, ready=ready, progress=progress)
 
+  def test_no_badge_with_diorama(self):
+    """With Diorama on, the iPhone on the iOS link never serves the big model: no badge blinking for it."""
+    from openpilot.selfdrive.ui.ui_state import ChestnutState, ui_state
+    saved = ui_state.diorama
+    ui_state.diorama = True
+    try:
+      self.assertEqual(self._state(self._view(progress={'stage': 'build', 'frac': 0.3})), ChestnutState.DISCONNECTED)
+      self.assertEqual(self._state(self._view(ready=True), started=True), ChestnutState.DISCONNECTED)
+    finally:
+      ui_state.diorama = saved
+
   def test_offroad_states(self):
     from openpilot.selfdrive.ui.ui_state import ChestnutState
     self.assertEqual(self._state(self._view(present=False)), ChestnutState.DISCONNECTED)
