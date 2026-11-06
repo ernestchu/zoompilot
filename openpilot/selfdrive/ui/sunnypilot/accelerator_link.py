@@ -37,6 +37,12 @@ def diorama_toggle_meaningful() -> bool:
   return link_mode() == "ios"
 
 
+def charge_toggle_meaningful() -> bool:
+  """Offered while the link is on iOS: jetlinkd asks an iPhone on a direct cable to charge from the comma
+  (KEYS.charge_phone), whatever the phone runs, jetlink's app or Diorama's."""
+  return link_mode() == "ios"
+
+
 def link_toggle_meaningful() -> bool:
   """Offered wherever jetlink is checked out, as the chestnut slot is offered
   whether or not a board is fitted, except beside a chestnut, which runs the
