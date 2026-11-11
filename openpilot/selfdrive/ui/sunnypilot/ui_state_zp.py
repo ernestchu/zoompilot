@@ -7,7 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 import numpy as np
 
 from opendbc.sunnypilot.car.lateral_tune import get_steer_rail_schedule
-from openpilot.sunnypilot import jetlink_adapter
+from openpilot.sunnypilot import diorama_setting, jetlink_adapter
 from openpilot.sunnypilot.selfdrive.car.intelligent_cruise_button_management.demand import needs_icbm
 from openpilot.sunnypilot.selfdrive.car.intelligent_cruise_button_management.icbm_latch import icbm_active
 
@@ -68,8 +68,10 @@ class UIStateZP:
     self._steer_rail_schedule = get_steer_rail_schedule(self.CP) if self.CP is not None else None
     # on the 5 Hz params pass, not per frame in a layout; a fitted chestnut owns chestnut_state
     self.jetlink = None if self.sm['deviceState'].chestnutPresent else jetlink_adapter.status()
-    # with Diorama on, the iPhone on jetlink's iOS link watches the drive (dioramad) and runs no big model
-    self.diorama = self.params.get_bool("Diorama")
+    # with Diorama on usb, the iPhone on jetlink's iOS link watches the drive (dioramad) and runs no big
+    # model; the setting holds Jetlink on iOS for it, and gives the user's own back after
+    diorama_setting.sync_link(self.params)
+    self.diorama = diorama_setting.holds_port(self.params)
     self._enforce_usb_port()
     # the Jetson configures the gadget ~25 s after a cold boot, after the one-shot
     # usb_unknown decision; recognising it late still clears "unknown"
@@ -133,7 +135,7 @@ class UIStateZP:
 
   def _jetlink_state(self, view):
     """ChestnutState for the link: progress and the records offroad, modelV2 and acceleratorState onroad. No
-    badge (DISCONNECTED) with Diorama on: the iPhone never serves the big model then, so the badge would blink for good, waiting for it."""
+    badge (DISCONNECTED) with Diorama on usb: the iPhone never serves the big model then, so the badge would blink for good, waiting for it."""
     from openpilot.selfdrive.ui.ui_state import ChestnutState  # defined by the class that mixes this in
     if self.diorama:
       return ChestnutState.DISCONNECTED

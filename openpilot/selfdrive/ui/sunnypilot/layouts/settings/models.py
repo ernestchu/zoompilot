@@ -13,8 +13,9 @@ from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.sunnypilot.ui_state_zp import lane_center_mode, set_lane_center_mode
-from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, LINK_MODE_TITLES, big_model_note, \
-  charge_toggle_meaningful, diorama_toggle_meaningful, link_mode, link_status, link_toggle_meaningful, standin_model
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, DIORAMA_MODE_TITLES, DIORAMA_MODES, \
+  LINK_MODE_TITLES, big_model_note, charge_toggle_meaningful, diorama_blocked_options, diorama_mode, link_held, link_mode, link_status, \
+  link_toggle_meaningful, standin_model
 from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
                                                            model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
 from openpilot.sunnypilot.jetlink_adapter import KEYS, MODES
@@ -79,11 +80,14 @@ class ModelsLayout(Widget):
       buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in MODES],
       param=KEYS.link, button_width=300, inline=False)
 
-    # takes effect onroad too: manager starts and stops dioramad as the param changes
-    self.diorama_item = toggle_item_sp(
+    # off and Wi-Fi take effect onroad too: manager starts and stops dioramad as the param changes.
+    # USB holds Jetlink on iOS (diorama_setting.sync_link, on the params pass), so it is chosen and left parked
+    self.diorama_item = multiple_button_item_sp(
       tr("Diorama"),
-      tr("Shows the drive as a live 3-D miniature on the iPhone plugged in over Jetlink's iOS link, in the Diorama app."),
-      initial_state=ui_state.params.get_bool(DIORAMA_KEY), param=DIORAMA_KEY)
+      tr("Shows the drive as a live 3-D miniature on an iPhone, in the Diorama app. USB: the iPhone on the comma's " +
+         "USB port, which keeps Jetlink on iOS for it. Wi-Fi: the iPhone on a network the comma is on, such as its hotspot."),
+      buttons=[lambda m=m: tr(DIORAMA_MODE_TITLES[m]) for m in DIORAMA_MODES],
+      param=DIORAMA_KEY, button_width=300, inline=False)
 
     # read by jetlinkd every step; a phone already charging keeps charging until it is unplugged
     self.charge_phone_item = toggle_item_sp(
@@ -159,8 +163,11 @@ class ModelsLayout(Widget):
     # the setting is a param read, so this rides the half-second tick
     self.accelerator_link_item.set_visible(link_toggle_meaningful())
     self.accelerator_link_item.action_item.set_selected_button(MODES.index(link_mode()))
-    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad())
-    self.diorama_item.set_visible(diorama_toggle_meaningful())
+    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad() and not link_held())
+    self.diorama_item.action_item.set_selected_button(DIORAMA_MODES.index(diorama_mode()))
+    blocked = diorama_blocked_options()
+    self.diorama_item.action_item.set_enabled_buttons(set(range(len(DIORAMA_MODES))) - blocked)
+    self.diorama_item.action_item.set_enabled(len(blocked) < len(DIORAMA_MODES) - 1)
     self.charge_phone_item.set_visible(charge_toggle_meaningful())
     status = link_status()
     if status != self._link_status:

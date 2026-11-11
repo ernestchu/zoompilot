@@ -110,24 +110,23 @@ class TestRestartingProcess(OpenpilotTestCase):
 
 
 class FakeParams:
-  def __init__(self, diorama: bool, link: int):
+  def __init__(self, diorama, link: int):
     self.values = {"Diorama": diorama, "JetlinkLink": link}
 
-  def get_bool(self, key):
-    return bool(self.values[key])
-
   def get(self, key):
-    return self.values[key]
+    return self.values.get(key)
 
 
 class TestDiorama(OpenpilotTestCase):
-  def test_runs_onroad_with_the_setting_and_the_ios_link(self):
-    ios = 2  # jetlink_adapter.MODES
-    assert diorama_on(True, FakeParams(True, ios), None)
-    assert not diorama_on(False, FakeParams(True, ios), None)
-    assert not diorama_on(True, FakeParams(False, ios), None)
-    assert not diorama_on(True, FakeParams(True, 1), None)
-    assert not diorama_on(True, FakeParams(True, 0), None)
+  def test_runs_onroad_on_usb_or_wifi_whatever_the_link(self):
+    off, usb, wifi = 0, 1, 2  # diorama_setting.MODES
+    for link in (0, 1, 2):  # jetlink_adapter.MODES
+      assert diorama_on(True, FakeParams(usb, link), None)
+      assert diorama_on(True, FakeParams(wifi, link), None)
+      assert not diorama_on(True, FakeParams(off, link), None)
+      assert not diorama_on(False, FakeParams(wifi, link), None)
+    assert not diorama_on(True, FakeParams(None, 2), None)
+    assert not diorama_on(True, FakeParams(7, 2), None)
 
   def test_in_the_process_list(self):
     p = next(p for p in extend_procs([]) if p.name == "dioramad")

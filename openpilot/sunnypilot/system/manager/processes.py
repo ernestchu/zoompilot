@@ -16,7 +16,7 @@ from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.manager.process import ManagerProcess, NativeProcess, PythonProcess
 
-from openpilot.sunnypilot import jetlink_adapter
+from openpilot.sunnypilot import diorama_setting, jetlink_adapter
 
 AUDIO_PROCESSES = ("micd", "soundd")
 
@@ -100,9 +100,10 @@ def use_github_runner(started: bool, params: Params, CP: car.CarParams) -> bool:
 
 
 def diorama_on(started: bool, params: Params, CP: car.CarParams) -> bool:
-  """dioramad (the diorama_repo submodule): onroad, with the Diorama setting on and
-  jetlink's link on iOS, whose cable network is where the iPhone reaches it."""
-  return started and params.get_bool("Diorama") and params.get("JetlinkLink") == jetlink_adapter.MODES.index("ios")
+  """dioramad (the diorama_repo submodule): onroad, with the Diorama setting on usb or wifi.
+  It listens on every interface: on usb the iPhone dials it over jetlink's iOS gadget, which
+  the setting holds on, and on wifi over a network both are on, such as the iPhone's hotspot."""
+  return started and diorama_setting.streaming(params)
 
 
 def extend_procs(procs: list[ManagerProcess]) -> list[ManagerProcess]:

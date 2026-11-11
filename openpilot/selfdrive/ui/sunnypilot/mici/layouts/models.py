@@ -13,8 +13,8 @@ from openpilot.selfdrive.ui.mici.widgets.dialog import BigConfirmationDialog, Bi
 from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected_bundle
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton
 from openpilot.selfdrive.ui.ui_state import ui_state, device
-from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, big_model_note, big_model_progress, charge_toggle_meaningful, \
-  diorama_toggle_meaningful, link_toggle_meaningful, standin_model
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, DIORAMA_MODES, big_model_note, big_model_progress, \
+  charge_toggle_meaningful, diorama_blocked_options, link_held, link_toggle_meaningful, standin_model
 from openpilot.selfdrive.ui.sunnypilot.model_info import (active_source, big_model_state, bundles_for_source, carrying_model,
                                                            default_model_name, model_cache_size_mb, model_info, queued_name,
                                                            refresh_in_progress, refresh_model_list)
@@ -30,6 +30,7 @@ from openpilot.system.ui.widgets.scroller import NavScroller
 
 # the value line: the mode
 LINK_MODE_LABELS = {"off": "off", "usb": "usb", "ios": "iOS"}
+DIORAMA_MODE_LABELS = {"off": "off", "usb": "usb", "wifi": "wi-fi"}
 
 
 def _model_info() -> tuple[str, str, str]:
@@ -121,13 +122,19 @@ class ModelsLayoutMici(NavScroller):
                                                             "USB for a Mac, Jetson, Linux PC or Android. iOS for an iPhone or iPad.\n" +
                                                             "Turns off ADB. The small model drives until the big model is ready."))
     self.link_toggle.set_enabled(lambda: ui_state.is_offroad())
+    # Diorama on usb holds it on iOS: locked, its pill grey
+    self.link_toggle.set_superseded(link_held)
     self.link_toggle.set_visible(link_toggle_meaningful())
 
-    # takes effect onroad too: manager starts and stops dioramad as the param changes
-    self.diorama_toggle = BigParamControlSP(tr("diorama"), DIORAMA_KEY,
-                                            description=tr("Shows the drive as a live 3-D miniature on the iPhone\n" +
-                                                           "plugged in over Jetlink's iOS link, in the Diorama app."))
-    self.diorama_toggle.set_visible(diorama_toggle_meaningful())
+    # off and wi-fi take effect onroad too: manager starts and stops dioramad as the param changes.
+    # usb holds jetlink on iOS (diorama_setting.sync_link, on the params pass), so it is chosen and left parked
+    self.diorama_toggle = BigMultiParamToggleSP(tr("diorama"), DIORAMA_KEY, [tr(DIORAMA_MODE_LABELS[m]) for m in DIORAMA_MODES],
+                                                values=list(range(len(DIORAMA_MODES))), off_index=0,
+                                                description=tr("Shows the drive as a live 3-D miniature on an iPhone.\n" +
+                                                               "USB for the iPhone on the comma's port; keeps jetlink on iOS.\n" +
+                                                               "Wi-Fi for the iPhone on the comma's network, like its hotspot."))
+    self.diorama_toggle.set_blocked_options(diorama_blocked_options)
+    self.diorama_toggle.set_enabled(lambda: len(diorama_blocked_options()) < len(DIORAMA_MODES) - 1)
 
     # read by jetlinkd every step; a phone already charging keeps charging until it is unplugged
     self.charge_phone_toggle = BigParamControlSP(tr("charge iphone"), KEYS.charge_phone,
@@ -280,7 +287,6 @@ class ModelsLayoutMici(NavScroller):
       self.link_toggle.refresh()
       self.link_toggle.set_visible(link_toggle_meaningful())
       self.diorama_toggle.refresh()
-      self.diorama_toggle.set_visible(diorama_toggle_meaningful())
       self.charge_phone_toggle.refresh()
       self.charge_phone_toggle.set_visible(charge_toggle_meaningful())
 
