@@ -82,6 +82,7 @@ function launch {
   ln -sfn teleoprtc_repo/teleoprtc teleoprtc
   ln -sfn tinygrad_repo/tinygrad tinygrad
   ln -sfn jetlink_repo/jetlink jetlink
+  ln -sfn diorama_repo/diorama diorama
 
   # hardware specific init
   if [ -f /AGNOS ]; then

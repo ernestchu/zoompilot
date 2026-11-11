@@ -6,14 +6,15 @@ See the LICENSE.md file in the root directory for more details.
 
 The user's say over the Jetlink setting, shared by the mici and tici models panels:
 Off, USB (a Jetson, a Linux PC or a Mac) or iOS (an iPhone), stored as an
-index into the adapter's MODES. The small model is picked as ever: manager
+index into the adapter's MODES; and over Diorama's, off, USB or Wi-Fi, whose
+USB holds Jetlink on iOS (sunnypilot/diorama_setting.py). The small model is picked as ever: manager
 runs whichever modeld that bundle needs and the link joins it, so the setting
 never changes which modeld runs. Everything else here reads ui_state.jetlink,
 the snapshot the params pass takes, and what the models panels say of the big
 models jetlink runs.
 """
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.sunnypilot import jetlink_adapter
+from openpilot.sunnypilot import diorama_setting, jetlink_adapter
 from openpilot.sunnypilot.jetlink_adapter import KEYS, MODES
 from openpilot.system.ui.lib.multilang import tr
 
@@ -27,6 +28,38 @@ def link_mode() -> str:
   return MODES[index] if isinstance(index, int) and 0 <= index < len(MODES) else "off"
 
 
+# dioramad's setting (the diorama_repo submodule): off, or an iPhone on the USB cable or on Wi-Fi
+DIORAMA_KEY = diorama_setting.KEY
+DIORAMA_MODES = diorama_setting.MODES
+DIORAMA_MODE_TITLES = {"off": "Off", "usb": "USB", "wifi": "Wi-Fi"}
+
+
+def diorama_mode() -> str:
+  return diorama_setting.mode(ui_state.params)
+
+
+def link_held() -> bool:
+  """Diorama on usb holds the Jetlink setting on iOS (diorama_setting.sync_link): the control is locked."""
+  return diorama_mode() == "usb"
+
+
+def diorama_blocked_options() -> set[int]:
+  """Diorama options a tap skips. usb takes the port and moves the Jetlink setting, which jetlink
+  applies only parked, so it is chosen and left offroad; and it needs jetlink's iOS gadget, so not
+  without jetlink or beside a chestnut. off and wifi only start and stop dioramad, onroad too."""
+  usb = DIORAMA_MODES.index("usb")
+  if not ui_state.is_offroad():
+    # left onroad, usb would hand the port back mid-drive: the setting stays as it is
+    return set(range(len(DIORAMA_MODES))) - {usb} if link_held() else {usb}
+  return set() if link_toggle_meaningful() or link_held() else {usb}
+
+
+def charge_toggle_meaningful() -> bool:
+  """Offered while the link is on iOS: jetlinkd asks an iPhone on a direct cable to charge from the comma
+  (KEYS.charge_phone), whatever the phone runs, jetlink's app or Diorama's."""
+  return link_mode() == "ios"
+
+
 def link_toggle_meaningful() -> bool:
   """Offered wherever jetlink is checked out, as the chestnut slot is offered
   whether or not a board is fitted, except beside a chestnut, which runs the
@@ -35,7 +68,7 @@ def link_toggle_meaningful() -> bool:
   enumerate, so the toggle that turns it on would wait for the thing it enables."""
   if ui_state.chestnut_present:
     return False
-  return ui_state.jetlink is not None or link_mode() != "off"
+  return ui_state.jetlink is not None or link_mode() != "off" or link_held()
 
 
 def link_status() -> str:
@@ -46,6 +79,8 @@ def link_status() -> str:
   not what the host is. Empty where the kernel does not expose it, rather
   than claiming an empty port.
   """
+  if link_held():
+    return tr("Held on iOS while Diorama uses the USB port.")
   jetlink = ui_state.jetlink
   port = jetlink.port_state if jetlink is not None else None
   if port == "connected":

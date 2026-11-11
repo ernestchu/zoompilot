@@ -16,7 +16,7 @@ from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.manager.process import ManagerProcess, NativeProcess, PythonProcess
 
-from openpilot.sunnypilot import jetlink_adapter
+from openpilot.sunnypilot import diorama_setting, jetlink_adapter
 
 AUDIO_PROCESSES = ("micd", "soundd")
 
@@ -99,9 +99,16 @@ def use_github_runner(started: bool, params: Params, CP: car.CarParams) -> bool:
     not params.get_bool("NetworkMetered") and not params.get_bool("GithubRunnerSufficientVoltage"))
 
 
+def diorama_on(started: bool, params: Params, CP: car.CarParams) -> bool:
+  """dioramad (the diorama_repo submodule): onroad, with the Diorama setting on usb or wifi.
+  It listens on every interface: on usb the iPhone dials it over jetlink's iOS gadget, which
+  the setting holds on, and on wifi over a network both are on, such as the iPhone's hotspot."""
+  return started and diorama_setting.streaming(params)
+
+
 def extend_procs(procs: list[ManagerProcess]) -> list[ManagerProcess]:
   """process_config's list with micd and soundd as AudioProcess, jetlinkd beside
-  the model manager, and the GitHub runner at the end."""
+  the model manager, dioramad, and the GitHub runner at the end."""
   procs = [AudioProcess(p.name, p.module, p.should_run, enabled=p.enabled, sigkill=p.sigkill) if p.name in AUDIO_PROCESSES else p
            for p in procs]
 
@@ -111,6 +118,9 @@ def extend_procs(procs: list[ManagerProcess]) -> list[ManagerProcess]:
   jetlinkd = RestartingPythonProcess(jetlink_adapter.OWNER, jetlink_adapter.__name__, jetlink_adapter.should_run)
   at = next((i + 1 for i, p in enumerate(procs) if p.name == "models_manager"), len(procs))
   procs.insert(at, jetlinkd)
+
+  # its own process, reading what modeld publishes: modeld never waits on it
+  procs.append(PythonProcess("dioramad", "diorama.dioramad", diorama_on))
 
   if os.path.exists("../../../release/ci/github_runner.sh"):
     procs.append(NativeProcess("github_runner_start", "release/ci", ["./github_runner.sh", "start"], use_github_runner, sigkill=False))

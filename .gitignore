@@ -19,6 +19,7 @@ bin/
 /msgq
 /opendbc
 /jetlink
+/diorama
 /rednose
 /teleoprtc
 /tinygrad

@@ -334,6 +334,12 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     // an iPhone on a direct cable charges from the comma; off by default, some
     // lose the link once the comma powers them
     {"JetlinkChargePhone", {PERSISTENT, BOOL, "0"}},
+    // dioramad (the diorama_repo submodule) streams the drive to an iPhone: an index into
+    // sunnypilot/diorama_setting.py's MODES (off, usb, wifi); a stored bool's 1 reads as usb.
+    // usb holds JetlinkLink on iOS, whose gadget is the cable's network, and keeps the user's
+    // own JetlinkLink in DioramaJetlinkBefore until Diorama leaves usb
+    {"Diorama", {PERSISTENT | BACKUP, INT, "0"}},
+    {"DioramaJetlinkBefore", {PERSISTENT, INT}},
 
     // one-time markers
     {"ExperimentalAssistsDefaultOn", {PERSISTENT | BACKUP, BOOL}},  // Speed/Lead Follow Assist turned on once when they became default (params_migration_zp.py)

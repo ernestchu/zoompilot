@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from openpilot.common.test import OpenpilotTestCase
 from openpilot.system.manager.process import PythonProcess
 from openpilot.system.manager.process_config import always_run, managed_processes
-from openpilot.sunnypilot.system.manager.processes import AudioProcess, RestartingPythonProcess
+from openpilot.sunnypilot.system.manager.processes import AudioProcess, RestartingPythonProcess, diorama_on, extend_procs
 
 
 class FakeClock:
@@ -107,3 +107,27 @@ class TestRestartingProcess(OpenpilotTestCase):
     p.start()
     p.stop(block=False)
     assert not p.get_process_state_msg().shouldBeRunning
+
+
+class FakeParams:
+  def __init__(self, diorama, link: int):
+    self.values = {"Diorama": diorama, "JetlinkLink": link}
+
+  def get(self, key):
+    return self.values.get(key)
+
+
+class TestDiorama(OpenpilotTestCase):
+  def test_runs_onroad_on_usb_or_wifi_whatever_the_link(self):
+    off, usb, wifi = 0, 1, 2  # diorama_setting.MODES
+    for link in (0, 1, 2):  # jetlink_adapter.MODES
+      assert diorama_on(True, FakeParams(usb, link), None)
+      assert diorama_on(True, FakeParams(wifi, link), None)
+      assert not diorama_on(True, FakeParams(off, link), None)
+      assert not diorama_on(False, FakeParams(wifi, link), None)
+    assert not diorama_on(True, FakeParams(None, 2), None)
+    assert not diorama_on(True, FakeParams(7, 2), None)
+
+  def test_in_the_process_list(self):
+    p = next(p for p in extend_procs([]) if p.name == "dioramad")
+    assert isinstance(p, PythonProcess) and p.module == "diorama.dioramad"

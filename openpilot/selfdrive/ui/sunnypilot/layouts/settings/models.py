@@ -13,7 +13,8 @@ from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.sunnypilot.ui_state_zp import lane_center_mode, set_lane_center_mode
-from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODE_TITLES, big_model_note, link_mode, link_status, \
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import DIORAMA_KEY, DIORAMA_MODE_TITLES, DIORAMA_MODES, \
+  LINK_MODE_TITLES, big_model_note, charge_toggle_meaningful, diorama_blocked_options, diorama_mode, link_held, link_mode, link_status, \
   link_toggle_meaningful, standin_model
 from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
                                                            model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
@@ -28,7 +29,7 @@ from openpilot.system.ui.widgets.toggle import ON_COLOR
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.switch import Switch
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction, ScrollingButtonAction
-from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, option_item_sp, multiple_button_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, option_item_sp, multiple_button_item_sp, toggle_item_sp
 from openpilot.system.ui.sunnypilot.widgets.download_status import download_status_item
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
 
@@ -78,6 +79,22 @@ class ModelsLayout(Widget):
       self._link_description(""),
       buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in MODES],
       param=KEYS.link, button_width=300, inline=False)
+
+    # off and Wi-Fi take effect onroad too: manager starts and stops dioramad as the param changes.
+    # USB holds Jetlink on iOS (diorama_setting.sync_link, on the params pass), so it is chosen and left parked
+    self.diorama_item = multiple_button_item_sp(
+      tr("Diorama"),
+      tr("Shows the drive as a live 3-D miniature on an iPhone, in the Diorama app. USB: the iPhone on the comma's " +
+         "USB port, which keeps Jetlink on iOS for it. Wi-Fi: the iPhone on a network the comma is on, such as its hotspot."),
+      buttons=[lambda m=m: tr(DIORAMA_MODE_TITLES[m]) for m in DIORAMA_MODES],
+      param=DIORAMA_KEY, button_width=300, inline=False)
+
+    # read by jetlinkd every step; a phone already charging keeps charging until it is unplugged
+    self.charge_phone_item = toggle_item_sp(
+      tr("Charge iPhone"),
+      tr("Asks the iPhone on the cable, over USB PD, to charge from the comma instead of powering it. Up to 7.5 W " +
+      "through the comma, which waits until it has cooled. Some iPhones lose the link while the comma powers them."),
+      initial_state=ui_state.params.get_bool(KEYS.charge_phone), param=KEYS.charge_phone)
 
     self.download_item = download_status_item(lambda: tr("Download") if self._downloading else tr("Model Status"))
 
@@ -134,7 +151,7 @@ class ModelsLayout(Widget):
     # as the comma 4 panel: jetlink and small model steering just before refresh
     self.items = [self.small_model_item, self.big_model_item, self.cancel_download_item, self.download_item,
                   self.blendful_toggle, self.lane_turn_value_control, self.delay_control, self.camera_offset,
-                  self.accelerator_link_item, self.small_steering_control, self.refresh_item, self.clear_cache_item]
+                  self.accelerator_link_item, self.diorama_item, self.charge_phone_item, self.small_steering_control, self.refresh_item, self.clear_cache_item]
     self._refresh_accelerator_items()
 
   @staticmethod
@@ -146,7 +163,12 @@ class ModelsLayout(Widget):
     # the setting is a param read, so this rides the half-second tick
     self.accelerator_link_item.set_visible(link_toggle_meaningful())
     self.accelerator_link_item.action_item.set_selected_button(MODES.index(link_mode()))
-    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad())
+    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad() and not link_held())
+    self.diorama_item.action_item.set_selected_button(DIORAMA_MODES.index(diorama_mode()))
+    blocked = diorama_blocked_options()
+    self.diorama_item.action_item.set_enabled_buttons(set(range(len(DIORAMA_MODES))) - blocked)
+    self.diorama_item.action_item.set_enabled(len(blocked) < len(DIORAMA_MODES) - 1)
+    self.charge_phone_item.set_visible(charge_toggle_meaningful())
     status = link_status()
     if status != self._link_status:
       self._link_status = status
